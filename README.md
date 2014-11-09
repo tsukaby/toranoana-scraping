@@ -1,8 +1,11 @@
 toranoana-scraping
 ==================
 
-友人に頼まれて作ったとらのあなランキング収集ツール
-こいつで調べて書く同人誌決めるとかなんとか
+友人に頼まれて作った、とらのあなランキング収集ツール。
+こいつで調べてから、書く同人誌決めるとかなんとか。
 
-# build
+## build
 sbt assembly
+
+## How to use
+`java -jar toranoana-scraping [yyyyMMdd] [yyyyMMdd]`
