@@ -5,6 +5,8 @@ import java.io.{PrintWriter, StringReader}
 import com.github.nscala_time.time.Imports._
 import com.ibm.icu.text.Transliterator
 import com.ning.http.client.cookie.Cookie
+import com.tsukaby.toranoana.scraping.AgeType.{AdultOnly, AllAge}
+import com.tsukaby.toranoana.scraping.Gender.{Female, Male}
 import dispatch.Defaults._
 import dispatch._
 import nu.validator.htmlparser.common.XmlViolationPolicy
@@ -38,15 +40,17 @@ object Main {
 
     val transliterator = Transliterator.getInstance("Fullwidth-Halfwidth")
 
-    val file = new PrintWriter("toranoana-result.csv")
+    val files = Map(
+      AgeType.AllAge -> new PrintWriter("toranoana-result-male-normal.csv"),
+      AgeType.AdultOnly -> new PrintWriter("toranoana-result-male-18only.csv"))
 
-    getDateList(startDateTime, endDateTime) foreach { dateTime =>
+    for (dateTime <- getDateList(startDateTime, endDateTime); ageType <- Seq(AgeType.AllAge, AgeType.AdultOnly)) {
 
-      println(s"${dateTime.toString("yyyy/MM/dd")} 集計中")
+      println(s"${dateTime.toString("yyyy/MM/dd")} ${ageType.getClass.getSimpleName} 集計中")
 
-      Thread.sleep(1000)
+      Thread.sleep(5000)
 
-      var req = url(getToranoanaUrl(dateTime))
+      var req = url(getToranoanaUrl(dateTime, Gender.Male, ageType))
       req = req <:< Map("User-Agent" -> "Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; Win64; x64; Trident/5.0)")
       req = req.addCookie(new Cookie("afg", "0", "0", ".toranoana.jp", "/", 0, 0, false, false))
 
@@ -78,13 +82,21 @@ object Main {
             }
           case None =>
         }
+        val circle = x.text.split("\n") find (_.contains("サークル：")) match {
+          case Some(x) =>
+            x.replace("\t", "").replace("サークル：", "")
+          case None =>
+            ""
+        }
 
-        file.println(s"${dateTime.toString("yyyy/MM/dd")},$rank,$category")
-
+        val file = files.get(ageType).get
+        file.println(s""""${dateTime.toString("yyyy/MM/dd")}","$rank","$category","$circle"""")
       }
     }
 
-    file.close()
+    files.foreach { x =>
+      x._2.close()
+    }
 
     println("終了しました。")
 
@@ -122,8 +134,21 @@ object Main {
     Nil
   }
 
-  def getToranoanaUrl(dateTime: DateTime): String = {
-    s"http://www.toranoana.jp/mailorder/cot/ranking/${dateTime.getYear}/${dateTime.toString("yyyyMMdd")}-male.html"
+  def getToranoanaUrl(dateTime: DateTime, gender: Gender, ageType: AgeType): String = {
+
+    val genderString = gender match {
+      case Male => "male"
+      case Female => "female"
+    }
+
+    val ageTypeString = ageType match {
+      case AllAge => "0"
+      case AdultOnly => "1"
+    }
+
+    s"http://www.toranoana.jp/mailorder/cot/ranking/${dateTime.getYear}/${dateTime.toString("yyyyMMdd")}-$genderString$ageTypeString.html"
   }
 
 }
+
+
